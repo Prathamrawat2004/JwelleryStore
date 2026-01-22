@@ -9,6 +9,9 @@ import {
   SearchRounded,
   ShoppingCartOutlined,
 } from "@mui/icons-material";
+import { Avatar } from "@mui/material";
+import { useDispatch } from "react-redux";
+import { logout } from "../redux/reducers/userSlice";
 
 const Nav = styled.div`
   height: 80px;
@@ -23,7 +26,7 @@ const Nav = styled.div`
 `;
 
 const NavbarContainer = styled.div`
-  width: 100%;
+  width: 90%;
   max-width: 1400px;
   padding: 0 24px;
   display: flex;
@@ -32,8 +35,24 @@ const NavbarContainer = styled.div`
   justify-content: space-between;
   font-size: 1rem;
 `;
-const NavLogo = styled.div``;
-const Logo = styled.img``;
+const NavLogo = styled.div`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  font-weight: 500;
+  font-size: 18px;
+  text-decoration: none;
+  color: inherit;
+  @media (min-width: 768px) and (max-width: 1400px) {
+    width: 20%;
+  }
+`;
+
+const Logo = styled.img`
+  height: 34px;
+`;
+
 const NavItems = styled.ul`
   width: 100%;
   display: flex;
@@ -120,8 +139,19 @@ const NavLink = styled(RouterNavLink)`
   }
 `;
 
-const Navbar = ({ openAuth, setOpenAuth }) => {
+const TextButton = styled.div`
+  text-align: end;
+  color: ${({ theme }) => theme.secondary};
+  cursor: pointer;
+  font-size: 600;
+  &:hover {
+    color: ${({ theme }) => theme.primary};
+  }
+`;
+
+const Navbar = ({ openAuth, setOpenAuth, currentUser }) => {
   const [isopen, setIsOpen] = useState(false);
+  const dispatch = useDispatch();
   return (
     <Nav>
       <NavbarContainer>
@@ -146,50 +176,111 @@ const Navbar = ({ openAuth, setOpenAuth }) => {
             <NavLink to="/" onClick={() => setIsOpen(!isopen)}>
               Home
             </NavLink>
-            <NavLink to="/Shop">Shop</NavLink>
-            <NavLink to="/New_Arrivals">New Arrivals</NavLink>
-            <NavLink to="/Orders">Orders</NavLink>
-            <NavLink to="/Contact">Contact</NavLink>
-            <div style={{ flex: "1", display: "flex", gap: "12px" }}>
-              <Button
-                text="Sign Up"
-                outlined
-                small
-                onClick={() => setOpenAuth(!openAuth)}
-              />
-              <Button
-                text="Sign In"
-                small
-                onClick={() => setOpenAuth(!openAuth)}
-              />
-            </div>
+            <NavLink onClick={() => setIsOpen(!isopen)} to="/Shop">
+              Shop
+            </NavLink>
+            <NavLink onClick={() => setIsOpen(!isopen)} to="/New_Arrivals">
+              New Arrivals
+            </NavLink>
+            <NavLink onClick={() => setIsOpen(!isopen)} to="/Orders">
+              Orders
+            </NavLink>
+            <NavLink onClick={() => setIsOpen(!isopen)} to="/Contact">
+              Contact
+            </NavLink>
+            {currentUser ? (
+              <Button text="Logout" small onClick={() => dispatch(logout())} />
+            ) : (
+              <div
+                style={{
+                  flex: "1",
+                  display: "flex",
+                  gap: "12px",
+                }}
+              >
+                <Button
+                  text="Sign Up"
+                  outlined
+                  small
+                  onClick={() => setOpenAuth(!openAuth)}
+                />
+                <Button
+                  text="Sign In"
+                  small
+                  onClick={() => setOpenAuth(!openAuth)}
+                />
+              </div>
+            )}
           </MobileMenu>
         )}
 
         <Mobileicons>
           <NavLink to="/search">
-            <SearchRounded sx={{ color: "inherit", fontSize: "28px" }} />
+            <SearchRounded sx={{ color: "inherit", fontSize: "30px" }} />
           </NavLink>
-          <NavLink to="/favourite">
-            <FavoriteBorder sx={{ color: "inherit", fontSize: "28px" }} />
-          </NavLink>
-          <NavLink to="/cart">
-            <ShoppingCartOutlined sx={{ color: "inherit", fontSize: "28px" }} />
-          </NavLink>
-          <Button text="SignIn" small onClick={() => setOpenAuth(!openAuth)} />
+
+          {currentUser ? (
+            <>
+              <NavLink to="/favourite">
+                <FavoriteBorder sx={{ color: "inherit", fontSize: "28px" }} />
+              </NavLink>
+              <NavLink to="/cart">
+                <ShoppingCartOutlined
+                  sx={{ color: "inherit", fontSize: "28px" }}
+                />
+              </NavLink>
+              <Avatar
+                src={currentUser?.img}
+                sx={{
+                  color: "inherit",
+                  fontSize: "28px",
+                }}
+              >
+                {currentUser?.name[0]}
+              </Avatar>
+            </>
+          ) : (
+            <Button
+              text="SignIn"
+              small
+              onClick={() => setOpenAuth(!openAuth)}
+            />
+          )}
         </Mobileicons>
 
         <ButtonContainer>
-          <NavLink to="/search">
-            <SearchRounded sx={{ color: "inherit", fontSize: "28px" }} />
-          </NavLink>
-          <NavLink to="/favourite">
-            <FavoriteBorder sx={{ color: "inherit", fontSize: "28px" }} />
-          </NavLink>
-          <NavLink to="/cart">
-            <ShoppingCartOutlined sx={{ color: "inherit", fontSize: "28px" }} />
-          </NavLink>
-          <Button text="SignIn" small onClick={() => setOpenAuth(!openAuth)} />
+          {/* <NavLink to="/search">
+            <SearchRounded sx={{ color: "inherit", fontSize: "30px" }} />
+          </NavLink> */}
+
+          {currentUser ? (
+            <>
+              <NavLink to="/favourite">
+                <FavoriteBorder sx={{ color: "inherit", fontSize: "28px" }} />
+              </NavLink>
+              <NavLink to="/cart">
+                <ShoppingCartOutlined
+                  sx={{ color: "inherit", fontSize: "28px" }}
+                />
+              </NavLink>
+              <Avatar
+                src={currentUser?.img}
+                sx={{
+                  color: "inherit",
+                  fontSize: "28px",
+                }}
+              >
+                {currentUser?.name[0]}
+              </Avatar>
+              <TextButton onClick={() => dispatch(logout())}>Logout</TextButton>
+            </>
+          ) : (
+            <Button
+              text="SignIn"
+              small
+              onClick={() => setOpenAuth(!openAuth)}
+            />
+          )}
         </ButtonContainer>
       </NavbarContainer>
     </Nav>

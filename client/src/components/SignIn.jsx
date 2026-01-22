@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import TextInput from "./TextInput";
 import Button from "./Button";
+import { UserSignIn } from "../api";
+import { useDispatch } from "react-redux";
+import { openSnackbar } from "../redux/reducers/snackbarSlice";
+import { loginSuccess } from "../redux/reducers/userSlice";
 
 const Container = styled.div`
   width: 100%;
@@ -35,6 +39,62 @@ const TextButton = styled.div`
 `;
 
 const SignIn = () => {
+  const dispatch = useDispatch();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [buttonLoading, setButtonLoading] = useState(false);
+  const [buttonDisabled, setButtonDisabled] = useState(false);
+
+  const validateInputs = () => {
+    if (!email || !password) {
+      alert("Please fill in all fields");
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignIn = async () => {
+    setButtonLoading(true);
+    setButtonDisabled(true);
+    if (validateInputs()) {
+      await UserSignIn({ email, password })
+        .then((res) => {
+          dispatch(loginSuccess(res.data));
+          dispatch(
+            openSnackbar({
+              message: "Login Successful!",
+              severity: "success",
+            }),
+          );
+        })
+        .catch((err) => {
+          if (err.response) {
+            setButtonLoading(false);
+            setButtonDisabled(false);
+            alert(err.response.data.message);
+            dispatch(
+              openSnackbar({
+                message: err.response.data.message,
+                severity: "error",
+              }),
+            );
+          } else {
+            setButtonLoading(false);
+            setButtonDisabled(false);
+            dispatch(
+              openSnackbar({
+                message: err.message,
+                severity: "error",
+              }),
+            );
+          }
+        });
+    }
+    setButtonLoading(false);
+    setButtonDisabled(false);
+  };
+
   return (
     <Container>
       <div>
@@ -45,10 +105,23 @@ const SignIn = () => {
         <TextInput
           label="Email Address"
           placeholder="Enter your email address"
+          value={email}
+          handleChange={(e) => setEmail(e.target.value)}
         />
-        <TextInput label="Password" placeholder="Enter your password" />
+        <TextInput
+          label="Password"
+          placeholder="Enter your password"
+          password
+          value={password}
+          handleChange={(e) => setPassword(e.target.value)}
+        />
         <TextButton>Forgot Password?</TextButton>
-        <Button text="Sign In" />
+        <Button
+          text="Sign In"
+          onClick={handleSignIn}
+          isLoading={buttonLoading}
+          isDisabled={buttonDisabled}
+        />
       </div>
     </Container>
   );

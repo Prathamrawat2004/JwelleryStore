@@ -1,7 +1,13 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
 import TextInput from "../components/TextInput";
 import Button from "../components/Button";
+import { addToCart, deleteFromCart, getCart, placeOrder } from "../api";
+import { useNavigate } from "react-router-dom";
+import { CircularProgress } from "@mui/material";
+import { useDispatch } from "react-redux";
+import { openSnackbar } from "../redux/reducers/snackbarSlice";
+import { DeleteOutline } from "@mui/icons-material";
 
 const Container = styled.div`
   padding: 20px 30px;
@@ -101,7 +107,7 @@ const Img = styled.img`
   height: 80px;
 `;
 const Details = styled.div``;
-const ProTitle = styled.div`
+const Protitle = styled.div`
   color: ${({ theme }) => theme.primary};
   font-size: 16px;
   font-weight: 500;
@@ -137,91 +143,315 @@ const Delivery = styled.div`
 `;
 
 const Cart = () => {
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const [loading, setLoading] = useState(false);
+  const [reload, setReload] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [buttonLoad, setButtonLoad] = useState(false);
+
+  const [deliveryDetails, setDeliveryDetails] = useState({
+    firstName: "",
+    lastName: "",
+    emailAddress: "",
+    phoneNumber: "",
+    completeAddress: "",
+  });
+
+  const getProducts = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("jwellery-app-token");
+    await getCart(token).then((res) => {
+      setProducts(res.data);
+      setLoading(false);
+    });
+  };
+
+  const addCart = async (id) => {
+    const token = localStorage.getItem("jwellery-app-token");
+    await addToCart(token, { productId: id, quantity: 1 })
+      .then((res) => {
+        setReload(!reload);
+      })
+      .catch((err) => {
+        setReload(!reload);
+        dispatch(
+          openSnackbar({
+            message: err.message,
+            severity: "error",
+          }),
+        );
+      });
+  };
+
+  const removeCart = async (id, quantity, type) => {
+    const token = localStorage.getItem("jwellery-app-token");
+    let qnt = quantity > 0 ? 1 : null;
+    if (type === "full") qnt = null;
+    await deleteFromCart(token, {
+      productId: id,
+      quantity: qnt,
+    })
+      .then((res) => {
+        setReload(!reload);
+      })
+      .catch((err) => {
+        setReload(!reload);
+        dispatch(
+          openSnackbar({
+            message: err.message,
+            severity: "error",
+          }),
+        );
+      });
+  };
+
+  const calculateSubtotal = () => {
+    return products.reduce(
+      (total, item) => total + item.quantity * item?.product?.price?.org,
+      0,
+    );
+  };
+
+  useEffect(() => {
+    getProducts();
+  }, [reload]);
+
+  const convertAddressToString = (addressObj) => {
+    // Convert the address object to a string representation
+    return `${addressObj.firstName} ${addressObj.lastName}, ${addressObj.completeAddress}, ${addressObj.phoneNumber}, ${addressObj.emailAddress}`;
+  };
+
+  const PlaceOrder = async () => {
+    setButtonLoad(true);
+    try {
+      const isDeliveryDetailsFilled =
+        deliveryDetails.firstName &&
+        deliveryDetails.lastName &&
+        deliveryDetails.completeAddress &&
+        deliveryDetails.phoneNumber &&
+        deliveryDetails.emailAddress;
+
+      if (!isDeliveryDetailsFilled) {
+        // Show an error message or handle the situation where delivery details are incomplete
+        dispatch(
+          openSnackbar({
+            message: "Please fill in all required delivery details.",
+            severity: "error",
+          }),
+        );
+        return;
+      }
+      const token = localStorage.getItem("jwellery-app-token");
+      const totalAmount = calculateSubtotal().toFixed(2);
+      const orderDetails = {
+        products,
+        address: convertAddressToString(deliveryDetails),
+        totalAmount,
+      };
+
+      await placeOrder(token, orderDetails);
+
+      // Show success message or navigate to a success page
+      dispatch(
+        openSnackbar({
+          message: "Order placed successfully",
+          severity: "success",
+        }),
+      );
+      setButtonLoad(false);
+      // Clear the cart and update the UI
+      setReload(!reload);
+    } catch (error) {
+      // Handle errors, show error message, etc.
+      dispatch(
+        openSnackbar({
+          message: "Failed to place order. Please try again.",
+          severity: "error",
+        }),
+      );
+      setButtonLoad(false);
+    }
+  };
   return (
     <Container>
-      <Section>
-        <Title center>Your Shopping Cart</Title>
-        <Wrapper>
-          <Left>
-            <Table>
-              <TableItem bold flex>
-                Product
-              </TableItem>
-              <TableItem bold>Price</TableItem>
-              <TableItem bold>Quantity</TableItem>
-              <TableItem bold>Subtotal</TableItem>
-              <TableItem></TableItem>
-            </Table>
-            <Table>
-              <TableItem flex>
-                <Product>
-                  <Img src="https://assets.myntassets.com/dpr_1.5,q_30,w_400,c_limit,fl_progressive/assets/images/28219632/2024/3/12/2f53aaab-40e1-4c5b-8148-6ad150e5f4341710256687634CampusSutraMenClassicOpaqueCheckedCasualShirt2.jpg" />
-                  <Details>
-                    <ProTitle>Title</ProTitle>
-                    <ProDesc>Desc</ProDesc>
-                    <ProSize>12</ProSize>
-                  </Details>
-                </Product>
-              </TableItem>
-              <TableItem>$120</TableItem>
-              <TableItem>
-                <Counter>
-                  <div
-                    style={{
-                      cursor: "pointer",
-                      flex: 1,
-                    }}
-                  >
-                    -
+      {loading ? (
+        <CircularProgress />
+      ) : (
+        <Section>
+          <Title>Your Shopping Cart</Title>
+          {products.length === 0 ? (
+            <>Cart is empty</>
+          ) : (
+            <Wrapper>
+              <Left>
+                <Table>
+                  <TableItem bold flex>
+                    Product
+                  </TableItem>
+                  <TableItem bold>Price</TableItem>
+                  <TableItem bold>Quantity</TableItem>
+                  <TableItem bold>Subtotal</TableItem>
+                  <TableItem></TableItem>
+                </Table>
+                {products?.map((item) => (
+                  <Table>
+                    <TableItem flex>
+                      <Product>
+                        <Img src={item?.product?.img} />
+                        <Details>
+                          <Protitle>{item?.product?.title}</Protitle>
+                          <ProDesc>{item?.product?.name}</ProDesc>
+                          <ProSize>Size: Xl</ProSize>
+                        </Details>
+                      </Product>
+                    </TableItem>
+                    <TableItem>${item?.product?.price?.org}</TableItem>
+                    <TableItem>
+                      <Counter>
+                        <div
+                          style={{
+                            cursor: "pointer",
+                            flex: 1,
+                          }}
+                          onClick={() =>
+                            removeCart(item?.product?._id, item?.quantity - 1)
+                          }
+                        >
+                          -
+                        </div>
+                        {item?.quantity}
+                        <div
+                          style={{
+                            cursor: "pointer",
+                            flex: 1,
+                          }}
+                          onClick={() => addCart(item?.product?._id)}
+                        >
+                          +
+                        </div>
+                      </Counter>
+                    </TableItem>
+                    <TableItem>
+                      {" "}
+                      ${(item.quantity * item?.product?.price?.org).toFixed(2)}
+                    </TableItem>
+                    <TableItem>
+                      <DeleteOutline
+                        sx={{ color: "red" }}
+                        onClick={() =>
+                          removeCart(
+                            item?.product?._id,
+                            item?.quantity - 1,
+                            "full",
+                          )
+                        }
+                      />
+                    </TableItem>
+                  </Table>
+                ))}
+              </Left>
+              <Right>
+                <Subtotal>
+                  Subtotal : ${calculateSubtotal().toFixed(2)}
+                </Subtotal>
+                <Delivery>
+                  Delivery Details:
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "6px",
+                      }}
+                    >
+                      <TextInput
+                        small
+                        placeholder="First Name"
+                        value={deliveryDetails.firstName}
+                        handelChange={(e) =>
+                          setDeliveryDetails({
+                            ...deliveryDetails,
+                            firstName: e.target.value,
+                          })
+                        }
+                      />
+                      <TextInput
+                        small
+                        placeholder="Last Name"
+                        value={deliveryDetails.lastName}
+                        handelChange={(e) =>
+                          setDeliveryDetails({
+                            ...deliveryDetails,
+                            lastName: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <TextInput
+                      small
+                      value={deliveryDetails.emailAddress}
+                      handelChange={(e) =>
+                        setDeliveryDetails({
+                          ...deliveryDetails,
+                          emailAddress: e.target.value,
+                        })
+                      }
+                      placeholder="Email Address"
+                    />
+                    <TextInput
+                      small
+                      value={deliveryDetails.phoneNumber}
+                      handelChange={(e) =>
+                        setDeliveryDetails({
+                          ...deliveryDetails,
+                          phoneNumber: e.target.value,
+                        })
+                      }
+                      placeholder="Phone no. +91 XXXXX XXXXX"
+                    />
+                    <TextInput
+                      small
+                      textArea
+                      rows="5"
+                      handelChange={(e) =>
+                        setDeliveryDetails({
+                          ...deliveryDetails,
+                          completeAddress: e.target.value,
+                        })
+                      }
+                      value={deliveryDetails.completeAddress}
+                      placeholder="Complete Address (Address, State, Country, Pincode)"
+                    />
                   </div>
-                  2
-                  <div
-                    style={{
-                      cursor: "pointer",
-                      flex: 1,
-                    }}
-                  >
-                    +
+                </Delivery>
+                <Delivery>
+                  Payment Details:
+                  <div>
+                    <TextInput small placeholder="Card Number" />
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "6px",
+                      }}
+                    >
+                      <TextInput small placeholder="Expiry Date" />
+                      <TextInput small placeholder="CVV" />
+                    </div>
+                    <TextInput small placeholder="Card Holder name" />
                   </div>
-                </Counter>
-              </TableItem>
-              <TableItem>$240</TableItem>
-            </Table>
-          </Left>
-          <Right>
-            <Subtotal></Subtotal>
-            <Delivery>
-              Delivery Details:
-              <div>
-                <div style={{ display: "flex", gap: "6px" }}>
-                  <TextInput small placeholder="First Name" />
-                  <TextInput small placeholder="Last Name" />
-                </div>
-                <TextInput small placeholder="Email Address" />
-                <TextInput small placeholder="Phone no." />
-                <TextInput
+                </Delivery>
+                <Button
+                  text="Pace Order"
                   small
-                  textArea
-                  rows="5"
-                  placeholder="Complete Address (Address, State, Country, Pincode)"
+                  isLoading={buttonLoad}
+                  isDisabled={buttonLoad}
+                  onClick={PlaceOrder}
                 />
-              </div>
-            </Delivery>
-            <Delivery>
-              Payment Details:
-              <div>
-                <TextInput small placeholder="Card Number" />
-                <div style={{ display: "flex", gap: "6px" }}>
-                  <TextInput small placeholder="Expiry Date" />
-                  <TextInput small placeholder="CVV" />
-                </div>
-                <TextInput small placeholder="Card Holder Name" />
-              </div>
-            </Delivery>
-            <Button text = "Place Order"/>
-          </Right>
-        </Wrapper>
-      </Section>
+              </Right>
+            </Wrapper>
+          )}
+        </Section>
+      )}
     </Container>
   );
 };

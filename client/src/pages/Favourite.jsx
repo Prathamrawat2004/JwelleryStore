@@ -1,5 +1,8 @@
-import React from 'react'
+import React, { useEffect, useState } from "react";
 import styled from "styled-components";
+import ProductCard from "../components/cards/ProductCard";
+import { getFavourite } from "../api";
+import { CircularProgress } from "@mui/material";
 
 const Container = styled.div`
   padding: 20px 30px;
@@ -53,14 +56,48 @@ const CardWrapper = styled.div`
 `;
 
 const Favourite = () => {
+  const [loading, setLoading] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [reload, setReload] = useState(false);
+
+  const getProducts = async () => {
+    setLoading(true);
+    const token = localStorage.getItem("jwellery-app-token");
+    await getFavourite(token).then((res) => {
+      setProducts(res.data);
+      setLoading(false);
+      setReload(!reload);
+    });
+  };
+
+  useEffect(() => {
+    getProducts();
+  }, []);
+
   return (
     <Container>
       <Section>
         <Title center>Your favourites</Title>
-        <CardWrapper></CardWrapper>
+        <CardWrapper>
+          {loading ? (
+            <CircularProgress />
+          ) : (
+            <>
+              {products.length === 0 ? (
+                <>No Products</>
+              ) : (
+                <CardWrapper>
+                  {products.map((product) => (
+                    <ProductCard product={product} />
+                  ))}
+                </CardWrapper>
+              )}
+            </>
+          )}
+        </CardWrapper>
       </Section>
     </Container>
-  )
-}
+  );
+};
 
-export default Favourite
+export default Favourite;

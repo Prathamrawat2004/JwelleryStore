@@ -1,8 +1,9 @@
-import Modal from "@mui/material/Modal";
-import { useState } from "react";
+import { Modal } from "@mui/material";
+import React, { useState } from "react";
 import styled from "styled-components";
 import LogoImage from "../utils/Images/Logo.png";
 import AuthImage from "../utils/Images/AuthImage.png";
+import { Close } from "@mui/icons-material";
 import SignIn from "../components/SignIn";
 import SignUp from "../components/SignUp";
 
@@ -64,7 +65,7 @@ const CloseButton = styled.div`
   background: ${({ theme }) => theme.primary + 20};
 `;
 
-const Close = styled.div``;
+
 
 const Text = styled.p`
   display: flex;
@@ -102,7 +103,7 @@ const Auth = ({ openAuth, setOpenAuth }) => {
           </CloseButton>
           {login ? (
             <>
-              <SignIn />
+              <SignIn setOpenAuth={setOpenAuth}/>
               <Text>
                 Don't have an account ?{" "}
                 <TextButton onClick={() => setLogin(false)}>Sign Up</TextButton>
@@ -110,7 +111,7 @@ const Auth = ({ openAuth, setOpenAuth }) => {
             </>
           ) : (
             <>
-              <SignUp />
+              <SignUp setOpenAuth={setOpenAuth}/>
               <Text>
                 Already have an account ?{" "}
                 <TextButton onClick={() => setLogin(true)}>Sign In</TextButton>
